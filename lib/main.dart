@@ -12,7 +12,6 @@ import 'package:the_diet_and_welness_app/provider/auth_service.dart';
 import 'package:the_diet_and_welness_app/provider/exercise_service.dart';
 import 'package:the_diet_and_welness_app/provider/diet_service.dart';
 import 'package:the_diet_and_welness_app/provider/user_profile_service.dart';
-import 'package:the_diet_and_welness_app/pages/admin_upload_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -116,7 +115,6 @@ class MyApp extends StatelessWidget {
           '/profile': (context) => const ProfilePage(),
           '/diet': (context) => const DietPlanPage(),
           '/exercise': (context) => const ExercisePage(),
-          '/admin-upload': (context) => const AdminUploadPage(),
         },
       ),
     );
