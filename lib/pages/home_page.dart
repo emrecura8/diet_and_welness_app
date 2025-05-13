@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:the_diet_and_welness_app/provider/auth_service.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -39,8 +41,12 @@ class HomePage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
-            onPressed: () {
-              // TODO: Implement logout logic later
+            onPressed: () async {
+              final authService = Provider.of<AuthService>(
+                context,
+                listen: false,
+              );
+              await authService.logoutUser();
               Navigator.pushReplacementNamed(context, '/login');
             },
           ),

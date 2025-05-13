@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:the_diet_and_welness_app/custom_widgets/custom_button.dart';
 import 'package:the_diet_and_welness_app/utils/utils.dart'; // For showing messages
+import 'package:provider/provider.dart';
+import 'package:the_diet_and_welness_app/provider/auth_service.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -17,19 +19,27 @@ class _SignupPageState extends State<SignupPage> {
 
   @override
   void dispose() {
-    // Clean up controllers
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleSignup() {
-    // Basic validation placeholder
+  void _handleSignup() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Implement actual signup logic later (Firebase)
-      showInfoMessage(context, 'Signup Placeholder: Success!');
-      Navigator.pushReplacementNamed(context, '/home');
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final error = await authService.signupUser(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+      if (error == null) {
+        // Success
+        showInfoMessage(context, 'Signup successful!');
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        // Show error
+        showInfoMessage(context, error);
+      }
     }
   }
 
@@ -119,12 +129,9 @@ class _SignupPageState extends State<SignupPage> {
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () {
-                    // Navigate back to Login page
-                    // Check if the current route can be popped
                     if (Navigator.canPop(context)) {
                       Navigator.pop(context);
                     } else {
-                      // Fallback if it cannot be popped (e.g., deep linked)
                       Navigator.pushReplacementNamed(context, '/login');
                     }
                   },

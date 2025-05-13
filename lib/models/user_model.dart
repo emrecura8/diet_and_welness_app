@@ -10,4 +10,22 @@ class User {
     required this.email,
     // Initialize other fields here
   });
+
+  // Convert User object to a Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'email': email,
+      // Add other fields if they exist
+    };
+  }
+
+  // Create User object from a Firestore Map
+  factory User.fromMap(Map<String, dynamic> map) {
+    return User(
+      id: map['id'] ?? '',
+      email: map['email'] ?? '',
+      // Add other fields if they exist
+    );
+  }
 }

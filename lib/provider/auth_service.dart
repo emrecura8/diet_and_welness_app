@@ -1,41 +1,78 @@
 import 'package:flutter/material.dart';
-import 'package:the_diet_and_welness_app/models/user_model.dart'; // Import User model
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth; // Aliased import
+import 'package:the_diet_and_welness_app/models/user_model.dart'
+    as app_user; // Aliased import
 
-// Placeholder for authentication service (e.g., Firebase Auth)
 class AuthService extends ChangeNotifier {
-  // Placeholder for the current user state
-  User? _currentUser;
-  User? get currentUser => _currentUser;
+  final fb_auth.FirebaseAuth _firebaseAuth = fb_auth.FirebaseAuth.instance;
+  app_user.User? _currentUser;
 
-  // Placeholder method for user login
-  Future<bool> loginUser(String email, String password) async {
-    // TODO: Implement actual Firebase login logic later
-    print('AuthService: Attempting login for $email');
-    await Future.delayed(const Duration(seconds: 1)); // Simulate network call
-    // Simulate successful login for now
-    _currentUser = User(id: 'placeholder_id', email: email);
-    notifyListeners(); // Notify listeners about the change in auth state
-    return true;
+  app_user.User? get currentUser => _currentUser;
+
+  AuthService() {
+    // Listen to auth state changes
+    _firebaseAuth.authStateChanges().listen((fb_auth.User? firebaseUser) {
+      if (firebaseUser == null) {
+        _currentUser = null;
+        print('AuthService: User is currently signed out!');
+      } else {
+        // You might want to fetch more user details from Firestore here if needed
+        _currentUser = app_user.User(
+          id: firebaseUser.uid,
+          email: firebaseUser.email ?? '',
+        );
+        print('AuthService: User is signed in: $firebaseUser.uid');
+      }
+      notifyListeners();
+    });
   }
 
-  // Placeholder method for user signup
-  Future<bool> signupUser(String email, String password) async {
-    // TODO: Implement actual Firebase signup logic later
-    print('AuthService: Attempting signup for $email');
-    await Future.delayed(const Duration(seconds: 1)); // Simulate network call
-    // Simulate successful signup for now
-    _currentUser = User(id: 'placeholder_id', email: email);
-    notifyListeners();
-    return true;
+  Future<String?> loginUser(String email, String password) async {
+    print('AuthService: Attempting Firebase login for $email');
+    try {
+      await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      // Auth state listener will update _currentUser and notify
+      return null; // Success
+    } on fb_auth.FirebaseAuthException catch (e) {
+      print('Firebase login error: ${e.code} - ${e.message}');
+      return e.message; // Return error message
+    } catch (e) {
+      print('Generic login error: $e');
+      return 'An unexpected error occurred.';
+    }
   }
 
-  // Placeholder method for user logout
+  Future<String?> signupUser(String email, String password) async {
+    print('AuthService: Attempting Firebase signup for $email');
+    try {
+      await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      // Auth state listener will update _currentUser and notify
+      // Optionally: save additional user info to Firestore here
+      // if (fbUser != null) {
+      //   await FirebaseFirestore.instance.collection('users').doc(fbUser.uid).set({
+      //     'email': email,
+      //     // Add other fields
+      //   });
+      // }
+      return null; // Success
+    } on fb_auth.FirebaseAuthException catch (e) {
+      print('Firebase signup error: ${e.code} - ${e.message}');
+      return e.message;
+    } catch (e) {
+      print('Generic signup error: $e');
+      return 'An unexpected error occurred.';
+    }
+  }
+
   Future<void> logoutUser() async {
-    // TODO: Implement actual Firebase logout logic later
-    print('AuthService: Logging out');
-    _currentUser = null;
-    notifyListeners();
+    print('AuthService: Logging out from Firebase');
+    await _firebaseAuth.signOut();
+    // Auth state listener will update _currentUser and notify
   }
-
-  // Add methods like password reset etc. later if needed
 }

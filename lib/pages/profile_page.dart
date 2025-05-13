@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:the_diet_and_welness_app/provider/user_profile_service.dart';
+import 'package:the_diet_and_welness_app/provider/auth_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -10,6 +13,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   // TODO: Load actual user data later (Firebase/Local)
   String _userEmail = "user@example.com";
+  final _nameController = TextEditingController();
   final _ageController = TextEditingController(text: '25');
   final _weightController = TextEditingController(text: '70');
   final _heightController = TextEditingController(text: '175');
@@ -25,11 +29,37 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _bmiResult;
 
   @override
-  void dispose() {
-    _ageController.dispose();
-    _weightController.dispose();
-    _heightController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.currentUser;
+    if (user == null) return;
+    setState(() {
+      _userEmail = user.email;
+    });
+    final profileService = Provider.of<UserProfileService>(
+      context,
+      listen: false,
+    );
+    await profileService.fetchUserProfile(user.id);
+    final profile = profileService.userProfile;
+    setState(() {
+      _nameController.text = profile['name']?.toString() ?? '';
+      _ageController.text = profile['age']?.toString() ?? '25';
+      _weightController.text = profile['weight']?.toString() ?? '70';
+      _heightController.text = profile['height']?.toString() ?? '175';
+      _selectedGoal = profile['goal']?.toString() ?? 'Weight Loss';
+      final bmi = profile['bmi'];
+      if (bmi != null) {
+        _bmiResult = "BMI: ${bmi.toStringAsFixed(1)}";
+      } else {
+        _bmiResult = null;
+      }
+    });
   }
 
   void _calculateAndShowBmi() {
@@ -40,7 +70,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final double heightM = heightCm / 100.0;
       final double bmi = weight / (heightM * heightM);
       String bmiCategory;
-      // Basic BMI categories (adjust ranges as needed)
+
       if (bmi < 18.5) {
         bmiCategory = "Underweight";
       } else if (bmi < 24.9) {
@@ -55,28 +85,74 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     } else {
       setState(() {
-        _bmiResult = null; // Clear result if inputs are invalid
+        _bmiResult = null;
       });
     }
   }
 
-  void _saveProfile() {
+  void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      _calculateAndShowBmi();
-
-      // TODO: Implement profile saving logic later (Firebase/Local)
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final user = authService.currentUser;
+      if (user == null) return;
+      double? weight = double.tryParse(_weightController.text);
+      double? heightCm = double.tryParse(_heightController.text);
+      double? bmi;
+      if (weight != null && heightCm != null && heightCm > 0) {
+        double heightM = heightCm / 100.0;
+        bmi = weight / (heightM * heightM);
+        String bmiCategory;
+        if (bmi < 18.5) {
+          bmiCategory = "Underweight";
+        } else if (bmi < 24.9) {
+          bmiCategory = "Normal weight";
+        } else if (bmi < 29.9) {
+          bmiCategory = "Overweight";
+        } else {
+          bmiCategory = "Obesity";
+        }
+        if (bmi != null) {
+          setState(() {
+            _bmiResult =
+                "BMI: " + (bmi?.toStringAsFixed(1) ?? "") + " ($bmiCategory)";
+          });
+        } else {
+          setState(() {
+            _bmiResult = null;
+          });
+        }
+      } else {
+        setState(() {
+          _bmiResult = null;
+        });
+      }
       Map<String, dynamic> updatedData = {
+        'name': _nameController.text.trim(),
         'age': int.tryParse(_ageController.text) ?? 0,
-        'weight': double.tryParse(_weightController.text) ?? 0.0,
-        'height': double.tryParse(_heightController.text) ?? 0.0,
+        'weight': weight ?? 0.0,
+        'height': heightCm ?? 0.0,
+        'bmi': bmi,
         'goal': _selectedGoal,
       };
-      print('Saving profile: $updatedData');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile Update Placeholder: Saved!')),
+      final profileService = Provider.of<UserProfileService>(
+        context,
+        listen: false,
       );
+      await profileService.updateUserProfile(user.id, updatedData);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile saved!')));
     }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    _weightController.dispose();
+    _heightController.dispose();
+    super.dispose();
   }
 
   @override
@@ -101,15 +177,34 @@ class _ProfilePageState extends State<ProfilePage> {
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.email_outlined),
-                      const SizedBox(width: 16),
-                      Text(
-                        _userEmail,
-                        style: Theme.of(context).textTheme.bodyLarge,
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Full Name',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        validator:
+                            (v) =>
+                                v == null || v.isEmpty
+                                    ? 'Enter your name'
+                                    : null,
                       ),
-                      // Add 'Edit' button later if needed
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Icon(Icons.email_outlined),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              _userEmail,
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

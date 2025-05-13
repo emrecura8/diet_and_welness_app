@@ -13,4 +13,24 @@ class Exercise {
     required this.category,
     // Initialize other fields
   });
+
+  // Convert Exercise object to a Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'category': category,
+    };
+  }
+
+  // Create Exercise object from a Firestore Map
+  factory Exercise.fromMap(Map<String, dynamic> map) {
+    return Exercise(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      description: map['description'] ?? '',
+      category: map['category'] ?? '',
+    );
+  }
 }

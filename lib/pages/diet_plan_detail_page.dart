@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_diet_and_welness_app/models/diet_plan_model.dart';
+import 'package:provider/provider.dart';
+import 'package:the_diet_and_welness_app/provider/diet_service.dart';
 
 class DietPlanDetailPage extends StatelessWidget {
   final DietPlan dietPlan;
@@ -8,8 +10,34 @@ class DietPlanDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dietService = Provider.of<DietService>(context);
+    final isFavorite = dietService.isFavoriteDiet(dietPlan.id);
     return Scaffold(
-      appBar: AppBar(title: Text(dietPlan.name)),
+      appBar: AppBar(
+        title: Text(dietPlan.name),
+        actions: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder:
+                (child, animation) =>
+                    ScaleTransition(scale: animation, child: child),
+            child: IconButton(
+              key: ValueKey<bool>(isFavorite),
+              icon: Icon(
+                isFavorite ? Icons.star : Icons.star_border,
+                color: isFavorite ? Colors.amber : Colors.grey,
+              ),
+              tooltip:
+                  isFavorite ? 'Remove from favorites' : 'Add to favorites',
+              onPressed: () async {
+                await dietService.toggleFavoriteDiet(context, dietPlan.id);
+                // Force rebuild to update icon
+                (context as Element).markNeedsBuild();
+              },
+            ),
+          ),
+        ],
+      ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -44,47 +72,39 @@ class DietPlanDetailPage extends StatelessWidget {
 
             const SizedBox(height: 24),
             Text(
-              'Sample Meals (Placeholder)',
+              'Sample Meals',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-
-            Card(
-              elevation: 0,
-              color: Theme.of(context).colorScheme.surface,
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.local_dining,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: const Text('Breakfast: Oatmeal with fruits'),
-                    subtitle: const Text('Approx. 350 calories'),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: Icon(
-                      Icons.local_dining,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: const Text('Lunch: Grilled Chicken Salad'),
-                    subtitle: const Text('Approx. 450 calories'),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: Icon(
-                      Icons.local_dining,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: const Text('Dinner: Salmon with Roasted Vegetables'),
-                    subtitle: const Text('Approx. 500 calories'),
-                  ),
-                ],
+            if (dietPlan.meals.isNotEmpty)
+              Card(
+                elevation: 0,
+                color: Theme.of(context).colorScheme.surface,
+                child: Column(
+                  children: [
+                    for (int i = 0; i < dietPlan.meals.length; i++) ...[
+                      ListTile(
+                        leading: Icon(
+                          Icons.local_dining,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        title: Text(
+                          '${dietPlan.meals[i]['type']}: ${dietPlan.meals[i]['name']}',
+                        ),
+                        subtitle: Text(
+                          'Calories: ${dietPlan.meals[i]['calories']}',
+                        ),
+                      ),
+                      if (i < dietPlan.meals.length - 1)
+                        const Divider(height: 1, indent: 16, endIndent: 16),
+                    ],
+                  ],
+                ),
               ),
-            ),
+            if (dietPlan.meals.isEmpty)
+              const Text('No sample meals available.'),
           ],
         ),
       ),

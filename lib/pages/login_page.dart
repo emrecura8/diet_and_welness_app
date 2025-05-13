@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:the_diet_and_welness_app/custom_widgets/custom_button.dart';
 import 'package:the_diet_and_welness_app/utils/utils.dart'; // For showing messages
+import 'package:provider/provider.dart';
+import 'package:the_diet_and_welness_app/provider/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,16 +16,14 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // Animation state
   double _opacity = 0.0;
 
   @override
   void initState() {
     super.initState();
-    // Trigger fade-in after a short delay
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // Check if the widget is still in the tree
         setState(() => _opacity = 1.0);
       }
     });
@@ -31,26 +31,32 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    // Clean up controllers
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() {
-    // Basic validation placeholder
+  void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Implement actual login logic later (Firebase)
-      showInfoMessage(context, 'Login Placeholder: Success!');
-      // Navigate to home on success (placeholder)
-      Navigator.pushReplacementNamed(context, '/home');
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final error = await authService.loginUser(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+      if (error == null) {
+        // Success
+        showInfoMessage(context, 'Login successful!');
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        // Show error
+        showInfoMessage(context, error);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use a SafeArea to avoid overlapping with system UI
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -92,10 +98,8 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 40),
                 AnimatedOpacity(
                   opacity: _opacity,
-                  duration: const Duration(
-                    milliseconds: 800,
-                  ), // Adjust duration
-                  curve: Curves.easeIn, // Adjust curve
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeIn,
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -123,19 +127,18 @@ class _LoginPageState extends State<LoginPage> {
                           decoration: const InputDecoration(
                             labelText: 'Password',
                             prefixIcon: Icon(Icons.lock_outline),
-                            // Add suffix icon for show/hide password later if needed
                           ),
                           obscureText: true,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your password';
                             }
-                            // Add more password validation if needed later
+
                             return null;
                           },
                         ),
                         const SizedBox(height: 24),
-                        // Using ElevatedButton directly to use the global theme
+
                         ElevatedButton(
                           onPressed: _handleLogin,
                           child: const Text('Login'),
@@ -143,7 +146,6 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 12),
                         TextButton(
                           onPressed: () {
-                            // Navigate to Sign Up page
                             Navigator.pushNamed(context, '/signup');
                           },
                           child: const Text('Don\'t have an account? Sign Up'),

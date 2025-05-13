@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:the_diet_and_welness_app/models/exercise_model.dart'; // Import Exercise model
+import 'package:provider/provider.dart';
+import 'package:the_diet_and_welness_app/provider/exercise_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ExercisePage extends StatefulWidget {
-  // Changed to StatefulWidget
   const ExercisePage({super.key});
 
   @override
@@ -10,43 +12,28 @@ class ExercisePage extends StatefulWidget {
 }
 
 class _ExercisePageState extends State<ExercisePage> {
-  // Placeholder list of exercises
-  // TODO: Replace with actual data loading later
-  final List<Exercise> _exercises = [
-    Exercise(
-      id: '1',
-      name: 'Push-ups',
-      description:
-          'Classic bodyweight exercise for chest, shoulders, and triceps.',
-      category: 'Strength',
-    ),
-    Exercise(
-      id: '2',
-      name: 'Jogging',
-      description: 'Cardiovascular exercise to improve endurance.',
-      category: 'Cardio',
-    ),
-    Exercise(
-      id: '3',
-      name: 'Plank',
-      description: 'Core strengthening exercise.',
-      category: 'Strength',
-    ),
-    Exercise(
-      id: '4',
-      name: 'Lunges',
-      description: 'Lower body exercise targeting quads and glutes.',
-      category: 'Strength',
-    ),
-    Exercise(
-      id: '5',
-      name: 'Stretching',
-      description: 'Basic stretches for flexibility.',
-      category: 'Flexibility',
-    ),
-  ];
+  bool _isLoading = true;
+  bool _showFavoritesOnly = false;
 
-  // Function to show the exercise details dialog
+  @override
+  void initState() {
+    super.initState();
+    _fetchExercises();
+  }
+
+  Future<void> _fetchExercises() async {
+    final exerciseService = Provider.of<ExerciseService>(
+      context,
+      listen: false,
+    );
+    await exerciseService.fetchExercises(context);
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   void _showExerciseDetails(BuildContext context, Exercise exercise) {
     showDialog(
       context: context,
@@ -83,7 +70,6 @@ class _ExercisePageState extends State<ExercisePage> {
             ),
           ],
           shape: RoundedRectangleBorder(
-            // Match card theme rounding
             borderRadius: BorderRadius.circular(12.0),
           ),
         );
@@ -93,53 +79,150 @@ class _ExercisePageState extends State<ExercisePage> {
 
   @override
   Widget build(BuildContext context) {
+    final exerciseService = Provider.of<ExerciseService>(context);
+    final exercises = exerciseService.exercises;
+    final favoriteIds = exerciseService.favoriteIds;
+    final filteredExercises =
+        _showFavoritesOnly
+            ? exercises.where((ex) => favoriteIds.contains(ex.id)).toList()
+            : exercises;
     return Scaffold(
       appBar: AppBar(title: const Text('Exercises')),
-      backgroundColor:
-          Theme.of(context).colorScheme.surface, // Use theme background
-      body: ListView.builder(
-        padding: const EdgeInsets.all(8.0), // Add padding around the ListView
-        itemCount: _exercises.length,
-        itemBuilder: (context, index) {
-          final exercise = _exercises[index];
-          // Use Card defaults from Theme
-          return Card(
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 10.0,
-                horizontal: 16.0,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : exercises.isEmpty
+              ? const Center(child: Text('No exercises found.'))
+              : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8.0,
+                      vertical: 4.0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        FilterChip(
+                          label: const Text('Show Favorites'),
+                          selected: _showFavoritesOnly,
+                          avatar: Icon(
+                            Icons.star,
+                            color:
+                                _showFavoritesOnly ? Colors.amber : Colors.grey,
+                          ),
+                          onSelected: (selected) {
+                            setState(() {
+                              _showFavoritesOnly = selected;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(8.0),
+                      itemCount: filteredExercises.length,
+                      itemBuilder: (context, index) {
+                        final exercise = filteredExercises[index];
+                        final isFavorite = favoriteIds.contains(exercise.id);
+                        return Card(
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10.0,
+                              horizontal: 16.0,
+                            ),
+                            leading: const Icon(Icons.fitness_center_outlined),
+                            title: Text(
+                              exercise.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              exercise.description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Chip(
+                                  label: Text(exercise.category),
+                                  labelStyle: TextStyle(
+                                    fontSize: 12,
+                                    color:
+                                        Theme.of(context).colorScheme.secondary,
+                                  ),
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.secondary.withOpacity(0.1),
+                                  padding: EdgeInsets.zero,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 300),
+                                  transitionBuilder:
+                                      (child, animation) => ScaleTransition(
+                                        scale: animation,
+                                        child: child,
+                                      ),
+                                  child: IconButton(
+                                    key: ValueKey<bool>(isFavorite),
+                                    icon: Icon(
+                                      isFavorite
+                                          ? Icons.star
+                                          : Icons.star_border,
+                                      color:
+                                          isFavorite
+                                              ? Colors.amber
+                                              : Colors.grey,
+                                    ),
+                                    tooltip:
+                                        isFavorite
+                                            ? 'Remove from favorites'
+                                            : 'Add to favorites',
+                                    onPressed: () async {
+                                      await exerciseService.toggleFavorite(
+                                        context,
+                                        exercise.id,
+                                      );
+                                      setState(() {}); // Update UI immediately
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            onTap: () {
+                              _showExerciseDetails(context, exercise);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.open_in_new),
+                      label: const Text('Reference: musclewiki.com'),
+                      onPressed: () async {
+                        final url = Uri.parse('https://musclewiki.com/');
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(
+                            url,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ],
               ),
-              leading: const Icon(Icons.fitness_center_outlined),
-              title: Text(
-                exercise.name,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                exercise.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: Chip(
-                label: Text(exercise.category),
-                labelStyle: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.secondary.withOpacity(0.1),
-                padding: EdgeInsets.zero,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
-              onTap: () {
-                // Show the details dialog instead of SnackBar
-                _showExerciseDetails(context, exercise);
-              },
-            ),
-          );
-        },
-      ),
     );
   }
 }

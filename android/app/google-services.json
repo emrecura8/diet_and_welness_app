@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "71058652675",
+    "project_id": "the-diet-and-wellness-app",
+    "storage_bucket": "the-diet-and-wellness-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:71058652675:android:bf2ac4fbc3c09358ea1836",
+        "android_client_info": {
+          "package_name": "com.ctis470.the_diet_and_wellnes_sapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJPnsX_JtrGhbBCr6cmNgd0iVg48GKXmA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
